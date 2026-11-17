@@ -380,7 +380,7 @@ function loop(now) {
   for (var ti = 0; ti < BB.tick.length; ti++) BB.tick[ti](now / 1000);
   renderer.toneMappingExposure = IN.on ? Math.min(BB.time.exp, 0.62) : BB.time.exp;
   var rawDt = (now - (loop.last || now)) / 1000, dt = Math.min(0.1, rawDt); loop.last = now;
-  if (fpsN >= 0 && now > fpsT0 && rawDt > 0 && rawDt < 0.4) { fpsN++; fpsSum += rawDt;   // slower frames than that mean a hidden or throttled tab, not a slow graphics chip
+  if (fpsN >= 0 && now > fpsT0 && rawDt > 0 && rawDt < 0.4 && document.hasFocus()) { fpsN++; fpsSum += rawDt;   // slower frames than that mean a hidden or throttled tab, not a slow graphics chip
     if (fpsSum > 5) { var fps = fpsN / fpsSum; fpsN = -1; if (fps < 17 && hiQ && !BB.lite) { setQuality(false); toast('Switched to Fast quality for a smoother view. Tap Quality in the bottom bar to go back to High.'); } } }
   if (IN.on) {
     if (IN.mode === 'walk') {
