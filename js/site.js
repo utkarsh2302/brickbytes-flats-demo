@@ -155,5 +155,5 @@ var poolMat = new THREE.MeshBasicMaterial({ map: BB.glowTex(0.2), color: 0xffc27
 var pgeo = new THREE.PlaneGeometry(1, 1); pgeo.rotateX(-Math.PI / 2);
 var pools = instanced(pgeo, poolMat, lamps.map(function (l) { return [l[0], 0.24, l[2], 15]; }), null, false); pools.receiveShadow = false; pools.visible = false;
 BB.poolGeo = pgeo; BB.poolMat = poolMat;
-BB.timeHooks.push(function (t) { poolMat.opacity = t.night * 0.55; pools.visible = t.night > 0.02; });
+BB.timeHooks.push(function (t) { poolMat.opacity = t.night * 0.55 + (t.gold || 0) * 0.14; pools.visible = poolMat.opacity > 0.02; });
 })();

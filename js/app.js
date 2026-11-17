@@ -232,7 +232,7 @@ function hit(ev) {
   for (var i = 0; i < hits.length; i++) { var f = hits[i].object.userData.flat; if (matches(f)) return f; }
   return null;
 }
-canvas.addEventListener('pointerdown', function (e) { down = { x: e.clientX, y: e.clientY, t: performance.now() }; tween = null; stopTour(); $('#tip').hidden = true; });
+canvas.addEventListener('pointerdown', function (e) { idleT = performance.now(); down = { x: e.clientX, y: e.clientY, t: performance.now() }; tween = null; stopTour(); $('#tip').hidden = true; });
 canvas.addEventListener('pointerup', function (e) {
   if (!down) return; var d = Math.hypot(e.clientX - down.x, e.clientY - down.y), dt = performance.now() - down.t; down = null;
   if (d > 7 || dt > 600) return;
@@ -362,7 +362,8 @@ function resize() {
   document.documentElement.style.setProperty('--dock-h', $('#dock').offsetHeight + 'px');
 }
 window.addEventListener('resize', resize);
-var fpsN = 0, fpsT0 = performance.now() + 14000, FXO = { bloom: 0.3, threshold: 0.82, radius: 0.75, vig: 0.3 }, FXI = { bloom: 0.1, threshold: 0.93, radius: 0.5, vig: 0.22 };
+var idleT = performance.now() + 20000, fpsN = 0, fpsT0 = performance.now() + 14000, FXO = { bloom: 0.3, threshold: 0.82, radius: 0.75, vig: 0.3 }, FXI = { bloom: 0.1, threshold: 0.93, radius: 0.5, vig: 0.22 };
+['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(function (ev) { window.addEventListener(ev, function () { idleT = performance.now(); }, { passive: true, capture: true }); });
 function ease(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
 BB.onTime = function () { IN.lights(); };
 function loop(now) {
@@ -379,7 +380,7 @@ function loop(now) {
   for (var ti = 0; ti < BB.tick.length; ti++) BB.tick[ti](now / 1000);
   renderer.toneMappingExposure = IN.on ? Math.min(BB.time.exp, 0.62) : BB.time.exp;
   var dt = Math.min(0.1, (now - (loop.last || now)) / 1000); loop.last = now;
-  if (fpsN >= 0 && now > fpsT0) { fpsN++; if (now - fpsT0 > 6000) { var fps = fpsN / ((now - fpsT0) / 1000); fpsN = -1; if (fps < 12 && hiQ && !BB.lite) { setQuality(false); toast('Switched to Fast quality for a smoother view. Tap Quality in the bottom bar to go back to High.'); } } }
+  if (fpsN >= 0 && now > fpsT0) { fpsN++; if (now - fpsT0 > 6000) { var fps = fpsN / ((now - fpsT0) / 1000); fpsN = -1; if (fps < 17 && hiQ && !BB.lite) { setQuality(false); toast('Switched to Fast quality for a smoother view. Tap Quality in the bottom bar to go back to High.'); } } }
   if (IN.on) {
     if (IN.mode === 'walk') {
       var kf = (keys.arrowup || keys.w ? 1 : 0) - (keys.arrowdown || keys.s ? 1 : 0), ks = (keys.d ? 1 : 0) - (keys.a ? 1 : 0), kt = (keys.arrowleft ? 1 : 0) - (keys.arrowright ? 1 : 0);
@@ -391,6 +392,7 @@ function loop(now) {
       tg.visible = false; BB.labels.visible = false; IN.scene.background = null; BB.fx.render(scene, IN.bgCam, IN.scene, IN.cam, FXI); tg.visible = true; BB.labels.visible = state.labels;
     } else { IN.scene.background = IN.studio; BB.fx.render(IN.scene, IN.cam, null, null, FXI); }
   } else {
+    controls.autoRotate = !tween && !tour && !intro && !state.sel && !reduceMotion && now - idleT > 25000; controls.autoRotateSpeed = 0.22;   // drift slowly around the project when nobody is touching it
     controls.update();
     var fd = camera.position.distanceTo(controls.target), fn = Math.min(1700, Math.max(240, fd + 60)); scene.fog.near += (fn - scene.fog.near) * 0.08; scene.fog.far = scene.fog.near + 1640;   // haze begins just beyond what you are looking at
     FXO.bloom = 0.06 + 0.5 * BB.time.night + 0.26 * (BB.time.gold || 0); FXO.threshold = 0.8 + 0.16 * (BB.time.high || 0) * BB.time.day; BB.fx.render(scene, camera, null, null, FXO);
@@ -398,7 +400,7 @@ function loop(now) {
 }
 resize(); BB.setHour(17.4); view('all', 0);
 var intro = false, deepFlat = byId[((/[?&]flat=([^&]+)/.exec(location.search) || [])[1] || '').toUpperCase()];   // a shared link opens straight at that flat
-function endIntro() { if (!intro) return; intro = false; document.body.classList.remove('clean', 'intro'); $('#introCap').hidden = true; var b = $('#uiToggle'); b.setAttribute('aria-pressed', 'false'); b.querySelector('span').textContent = 'Hide panels'; }
+function endIntro(e) { if (!intro) return; intro = false; if (e && e.type === 'keydown') view('all', 1500); document.body.classList.remove('clean', 'intro'); $('#introCap').hidden = true; var b = $('#uiToggle'); b.setAttribute('aria-pressed', 'false'); b.querySelector('span').textContent = 'Hide panels'; }
 if (!reduceMotion && !deepFlat && (!BB.lite || /intro/.test(location.search))) { // opening flythrough: over the locality, across the park, around the towers, then home
   var k0 = fit(), home = camera.position.clone(), homeT = controls.target.clone(), V = function (x, y, z) { return new THREE.Vector3(x, y, z); };
   var shots = [[V(-420 * k0, 150 * k0, 620 * k0), V(0, 30, 60), 0], [V(-150 * k0, 70 * k0, 330 * k0), V(0, 26, 40), 4200], [V(150 * k0, 44 * k0, 190 * k0), V(0, 34, -10), 4600], [home, homeT, 3600]], si = 0;

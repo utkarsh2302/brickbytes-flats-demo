@@ -29,8 +29,9 @@ BB.FM = { // flat material sets: [wall, slab]
   sel: (function () { var m = S({ color: 0xffd98a, emissive: 0xffb84d, emissiveIntensity: 0.75, roughness: 0.6 }); return [m, m]; })()
 };
 BB.timeHooks.push(function (t) {
-  T.lit.emissiveIntensity = t.night * 1.25; T.lit2.emissiveIntensity = t.night * 0.8; T.core.emissiveIntensity = t.night * 0.75; T.led.emissiveIntensity = 0.15 + t.night * 2.2;
-  T.glaz.emissiveIntensity = t.night * 1.1; T.soffit.emissiveIntensity = t.night * 0.28; T.beacon.emissiveIntensity = t.night * 2.5;
+  var dusk = t.night + (t.gold || 0) * 0.3;   // some lights are already on at sunset
+  T.lit.emissiveIntensity = dusk * 1.25; T.lit2.emissiveIntensity = dusk * 0.8; T.core.emissiveIntensity = dusk * 0.75; T.led.emissiveIntensity = 0.15 + dusk * 2.2;
+  T.glaz.emissiveIntensity = dusk * 1.1; T.soffit.emissiveIntensity = t.night * 0.28; T.beacon.emissiveIntensity = t.night * 2.5;
 });
 
 /* rounded rectangle on the ground plane, per-corner radius: [x0z0, x1z0, x1z1, x0z1] */

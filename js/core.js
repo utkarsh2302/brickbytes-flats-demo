@@ -75,7 +75,7 @@ var M = BB.M = {
   hill2: new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, fog: false, vertexColors: true })
 };
 (function () { var wn = loader.load('tex/water.jpg'); wn.wrapS = wn.wrapT = THREE.RepeatWrapping; wn.repeat.set(0.09, 0.09); M.water.normalMap = wn; M.water.normalScale.set(0.55, 0.55); BB.waterN = wn; })();
-BB.timeHooks.push(function (t) { M.lamp.emissiveIntensity = t.night * 3; M.water.emissiveIntensity = t.night * 0.5; });
+BB.timeHooks.push(function (t) { M.lamp.emissiveIntensity = (t.night + (t.gold || 0) * 0.45) * 3; M.water.emissiveIntensity = t.night * 0.5; });
 
 /* ---------- geometry helpers ---------- */
 function box(w, h, d, mat, x, y, z, parent, cast) {
