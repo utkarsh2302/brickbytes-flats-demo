@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Flats Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout idea: full-screen 3D scene, floating glass panels on the edges, tabs in a bottom dock, one champagne accent. Single dark theme by choice. */
+  color-scheme: dark;
+  --ink:#0a1117;
+  --panel:rgba(10,17,23,.82);
+  --panel-solid:#0f1820;
+  --line:rgba(255,255,255,.12);
+  --text:#eef2f4;
+  --muted:#9db0bb;
+  --accent:#dcb872;
+  --ok:#3ecf8e;
+  --hold:#f0b23e;
+  --sold:#e2645a;
+  --display:"Marcellus", Georgia, "Times New Roman", serif;
+  --body:"Outfit", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ink);color:var(--text);font-family:var(--body);font-size:14px;line-height:1.4;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible,[contenteditable]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#app{position:relative;height:100%;width:100%;overflow:hidden}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#scene.hot{cursor:pointer}
+.vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 58%,rgba(0,0,0,.34) 100%);z-index:1}
+.glass{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+
+/* Brand and filters */
+.left{position:absolute;left:16px;top:16px;width:272px;display:flex;flex-direction:column;gap:10px;z-index:5;max-height:calc(100% - 32px)}
+.brand{padding:12px 16px}
+.brand h1{font-family:var(--display);font-weight:400;font-size:24px;line-height:1.15;margin:0;letter-spacing:.01em;text-wrap:balance}
+.brand h1 span{border-bottom:1px dashed rgba(220,184,114,.5);padding-bottom:1px}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:12.5px}
+.brand .by{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11px;color:var(--muted);white-space:nowrap}
+.chip.gold{color:var(--accent);border-color:rgba(220,184,114,.45)}
+.filters{padding:14px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.filters h2,.panel h2{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
+.group{display:flex;flex-direction:column;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12.5px}
+.chips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a1408;font-weight:500}
+.range{display:flex;flex-direction:column;gap:4px}
+.range output{font-size:13px;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.match{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:10px;font-size:13px}
+.link{background:none;border:0;color:var(--accent);padding:0;font-size:12.5px;text-decoration:underline;text-underline-offset:3px}
+.filter-toggle{display:none}
+
+/* Stats */
+.stats{position:absolute;right:16px;top:16px;display:flex;gap:8px;z-index:5}
+.stat{padding:8px 14px;min-width:78px;text-align:left}
+.stat b{display:block;font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.dot.ok,.dot.available{background:var(--ok)} .dot.hold{background:var(--hold)} .dot.sold{background:var(--sold)} .dot.all{background:#cfd8dd}
+
+/* Detail panel */
+.panel{position:absolute;right:16px;top:92px;bottom:16px;width:336px;z-index:4;display:flex;flex-direction:column;overflow:hidden}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+.panel-head .t{font-family:var(--display);font-size:22px;line-height:1.1}
+.panel-head .s{font-size:12px;color:var(--muted)}
+.panel-body{padding:14px 16px 16px;overflow:auto;display:flex;flex-direction:column;gap:13px}
+#pMin{display:none}
+.icon-btn{background:transparent;border:1px solid var(--line);border-radius:10px;width:32px;height:32px;display:grid;place-items:center;flex:none;font-size:16px;line-height:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:500;white-space:nowrap}
+.pill.available{background:rgba(62,207,142,.16);color:var(--ok)}
+.pill.hold{background:rgba(240,178,62,.16);color:var(--hold)}
+.pill.sold{background:rgba(226,100,90,.16);color:var(--sold)}
+.price{font-size:30px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.05}
+.price small{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:4px}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.facts div{min-width:0}
+.facts dt{font-size:11px;color:var(--muted)}
+.facts dd{margin:1px 0 0;font-size:14px;font-variant-numeric:tabular-nums}
+.emi{font-size:12.5px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:8px 10px}
+.emi b{color:var(--text);font-weight:500}
+.plate{border:1px solid var(--line);border-radius:12px;padding:10px}
+.plate-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12.5px}
+.stepper{display:flex;gap:6px;align-items:center}
+.plate svg{width:100%;height:auto;display:block}
+.plate svg g.u{cursor:pointer}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{flex:1 1 130px;border-radius:10px;padding:10px 12px;border:1px solid var(--line);background:transparent;font-weight:500;font-size:13.5px;text-align:center;text-decoration:none;color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a1408}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{font-size:11.5px;color:var(--muted);margin:0}
+table.inv{width:100%;border-collapse:collapse;font-size:13px}
+table.inv th{font-size:11px;color:var(--muted);font-weight:400;text-align:left;padding:0 0 6px}
+table.inv td{padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+table.inv td:last-child,table.inv th:last-child{text-align:right}
+.picks{display:flex;flex-direction:column;gap:6px}
+.pick{display:flex;justify-content:space-between;align-items:center;gap:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:left;width:100%}
+.pick b{font-weight:500}
+.pick span{color:var(--muted);font-size:12px}
+.pick i{font-style:normal;color:var(--accent);font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+
+/* Dock */
+.dock{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:5;padding:8px;display:flex;flex-direction:column;gap:6px;max-width:calc(100% - 736px)}
+.row{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none}
+.row::-webkit-scrollbar{display:none}
+.row .lab{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:0 6px 0 4px;white-space:nowrap}
+.seg{background:transparent;border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-size:13px;white-space:nowrap;flex:none}
+.seg[aria-pressed="true"]{background:rgba(220,184,114,.16);border-color:var(--accent);color:var(--accent)}
+.seg.back{border-color:rgba(220,184,114,.6);color:var(--accent)}
+.sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px;flex:none}
+
+/* Interior and balcony bar */
+.ibar{position:absolute;left:304px;right:368px;top:56px;z-index:5;padding:8px;display:flex;flex-direction:column;gap:6px;width:max-content;max-width:calc(100% - 672px);margin:0 auto}
+.ititle{font-size:13px;color:var(--text);white-space:nowrap;padding:0 8px 0 2px}
+body.special .filters,body.special .stats,body.special .hint,body.special .filter-toggle,body.special .ext-only{display:none !important}
+body.mode-bal #iModes,body.mode-bal #iRooms{display:none}
+
+/* Hide or show every overlay */
+.ui-toggle{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:9;padding:7px 14px;font-size:12.5px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;color:var(--text)}
+.ui-toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body.clean .left,body.clean .stats,body.clean .panel,body.clean .dock,body.clean .hint,body.clean .ibar,body.clean .filter-toggle,body.clean .tip,body.clean .mini,body.clean .cap{display:none !important}
+body.clean .vig{background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 62%,rgba(0,0,0,.26) 100%)}
+body.clean .ui-toggle{opacity:.55}
+body.clean .ui-toggle:hover,body.clean .ui-toggle:focus-visible{opacity:1}
+/* Opening flythrough caption */
+.intro-cap{position:absolute;left:5%;bottom:9%;z-index:8;pointer-events:none;text-shadow:0 2px 24px rgba(0,0,0,.65);display:flex;flex-direction:column;gap:6px}
+.intro-cap b{font-family:var(--display);font-weight:400;font-size:clamp(34px,5vw,68px);line-height:1}
+.intro-cap span{font-size:clamp(11px,1.1vw,14px);letter-spacing:.22em;text-transform:uppercase}
+.intro-cap i{font-style:normal;font-size:12px;color:rgba(255,255,255,.75);margin-top:10px}
+body.intro .ui-toggle{display:none}
+/* Walk mode: caption and mini plan */
+.cap{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);z-index:5;padding:9px 16px;border-radius:12px;text-align:center}
+.cap b{display:block;font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1}
+.cap span{font-size:12px;color:var(--accent)}
+.mini{position:absolute;left:16px;bottom:16px;z-index:5;padding:8px;border-radius:12px}
+.mini canvas{display:block;border-radius:8px;cursor:pointer}
+.mini p{margin:6px 2px 0;font-size:11px;color:var(--muted)}
+body.mode-walk .panel,body.mode-walk .left{display:none !important}
+body.mode-walk .dock{left:auto;right:16px;transform:none}
+body.mode-walk .cap{left:16px;transform:none;bottom:252px;text-align:left}
+body.mode-walk .ibar{left:16px;right:16px;max-width:calc(100% - 32px)}
+.form{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px}
+.form label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.form input,.form select{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--text);font:inherit;font-size:13.5px}
+.form select option{color:#111}
+.form .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.panel-body > .btn{flex:none}
+.lead{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
+.lead b{font-weight:500;font-size:13.5px}
+.lead span{color:var(--muted)}
+details.fold{border:1px solid var(--line);border-radius:12px;padding:0 12px}
+details.fold summary{cursor:pointer;padding:10px 0;font-size:13px;font-weight:500;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.fold summary::after{content:"+";color:var(--accent);font-size:16px}
+details.fold[open] summary::after{content:"\2013"}
+details.fold .in{padding:0 0 12px;display:flex;flex-direction:column;gap:8px}
+.sheet{width:100%;border-collapse:collapse;font-size:12.5px}
+.sheet td{padding:5px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.sheet td:last-child{text-align:right}
+.sheet tr.tot td{font-weight:500;font-size:13.5px;color:var(--accent)}
+.sl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:12px;color:var(--muted);align-items:center}
+.sl input{grid-column:1 / -1}
+.sl b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.cmp{width:100%;border-collapse:collapse;font-size:12px}
+.cmp th,.cmp td{padding:6px 4px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;font-weight:400}
+.cmp th:first-child,.cmp td:first-child{text-align:left;color:var(--muted)}
+.cmp thead th{border-top:0;color:var(--accent);font-weight:500}
+.goflat{display:flex;gap:6px}
+.goflat input{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;padding:7px 10px;color:var(--text);font:inherit;font-size:13px}
+.goflat button{border:1px solid var(--line);border-radius:10px;background:transparent;padding:7px 12px;font-size:13px}
+/* Tooltip, toast, hint */
+.tip{position:absolute;z-index:6;pointer-events:none;padding:6px 10px;font-size:12.5px;white-space:nowrap;transform:translate(14px,14px);border-radius:10px}
+.tip b{font-weight:500}
+.toast{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);z-index:8;padding:10px 14px;max-width:min(440px,calc(100% - 32px));font-size:13px;text-align:center;border-color:rgba(220,184,114,.5)}
+.hint{position:absolute;left:304px;top:60px;z-index:3;font-size:12px;color:rgba(255,255,255,.86);text-shadow:0 1px 6px rgba(0,0,0,.6);max-width:260px}
+#boot{position:absolute;inset:0;z-index:30;background:#0a1117;display:grid;place-items:center;text-align:center;transition:opacity .7s ease}
+#boot.done{opacity:0;pointer-events:none}
+#boot h2{font-family:var(--display);font-weight:400;font-size:34px;margin:0 0 6px;letter-spacing:.02em}
+#boot p{margin:0;color:var(--muted);font-size:12px;letter-spacing:.22em;text-transform:uppercase}
+#boot i{display:block;width:180px;height:2px;margin:22px auto 0;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;position:relative}
+#boot i::after{content:"";position:absolute;inset:0;width:40%;background:var(--accent);border-radius:2px;animation:bootbar 1.2s ease-in-out infinite}
+@keyframes bootbar{0%{transform:translateX(-110%)}100%{transform:translateX(280%)}}
+#nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;z-index:20;background:var(--ink)}
+[hidden]{display:none !important}
+
+@media (max-width:1100px){ .hint{display:none} }
+@media (max-width:1240px) and (min-width:821px){
+  .dock{max-width:calc(100% - 32px)}
+  .panel{bottom:calc(var(--dock-h,150px) + 28px)}
+  .left{max-height:calc(100% - var(--dock-h,150px) - 44px)}
+}
+@media (max-width:820px){
+  .left{display:contents}
+  .brand{position:absolute;left:10px;top:10px;padding:10px 12px;max-width:calc(100% - 110px);z-index:5}
+  .brand h1{font-size:19px}
+  .brand p{display:none}
+  .stats{left:10px;right:10px;top:auto;bottom:calc(var(--dock-h,112px) + 18px);overflow-x:auto;scrollbar-width:none;z-index:3}
+  .stats::-webkit-scrollbar{display:none}
+  .stat{min-width:0;flex:1 0 auto;padding:6px 10px}
+  .stat b{font-size:16px}
+  .filter-toggle{display:inline-flex;position:absolute;right:10px;top:10px;z-index:6;padding:9px 14px;font-size:13px;border-radius:12px}
+  .filters{position:absolute;left:10px;right:10px;top:58px;max-height:calc(100% - 190px);z-index:7;display:none;background:var(--panel-solid)}
+  .filters.open{display:flex}
+  .panel{left:10px;right:10px;top:auto;width:auto;bottom:calc(var(--dock-h,112px) + 18px);max-height:54%;z-index:6;background:var(--panel-solid)}
+  #pMin{display:grid}
+  .panel.min .panel-body{display:none}
+  .panel.min .panel-head{border-bottom:0}
+  body.has-flat .stats{display:none}
+  body:not(.has-flat) .panel{display:none}
+  .dock{left:10px;right:10px;bottom:10px;transform:none;max-width:none}
+  .toast{bottom:auto;top:62px}
+  .ibar{left:10px;right:10px;top:96px;max-width:none;width:auto;margin:0}
+  .ui-toggle{top:58px;left:auto;right:10px;transform:none}
+  .cap,body.mode-walk .cap{bottom:auto;top:232px;left:10px;transform:none;text-align:left}
+  body.mode-walk .dock{left:10px;right:10px}
+  .mini{display:none}
+  body.special .toast{top:190px}
+  body.special .brand .by{display:none}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important;animation:none !important} }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene" aria-label="3D view of the project towers. Tap a flat to see its details."></canvas>
+  <div class="vig"></div>
+
+  <div class="stats" id="stats" aria-live="polite"></div>
+  <button class="filter-toggle glass" id="filterToggle" aria-expanded="false" aria-controls="filters">Filters</button>
+
+  <div class="left">
+  <header class="brand glass">
+    <h1><span id="projName" contenteditable="true" spellcheck="false" aria-label="Project name, editable">Skyline Residences</span></h1>
+    <p id="projSub">3 towers, 184 flats, club house, pool and central garden</p>
+    <div class="by"><span class="chip gold">Sample project</span><span class="chip">Tap name to rename</span><span class="chip">Built by BrickBytes</span></div>
+  </header>
+  <aside class="filters glass" id="filters" aria-label="Find a flat">
+    <h2>Find a flat</h2>
+    <div class="group"><span class="note">Tower</span><div class="chips" data-group="tower">
+      <button data-v="all" aria-pressed="true">All</button><button data-v="A" aria-pressed="false">A</button><button data-v="B" aria-pressed="false">B</button><button data-v="C" aria-pressed="false">C</button></div></div>
+    <div class="group"><span class="note">Type</span><div class="chips" data-group="type">
+      <button data-v="all" aria-pressed="true">All</button><button data-v="2 BHK" aria-pressed="false">2 BHK</button><button data-v="3 BHK" aria-pressed="false">3 BHK</button><button data-v="4 BHK" aria-pressed="false">4 BHK</button></div></div>
+    <div class="group"><span class="note">Status</span><div class="chips" data-group="status">
+      <button data-v="all" aria-pressed="true">All</button><button data-v="available" aria-pressed="false">Available</button><button data-v="hold" aria-pressed="false">On hold</button><button data-v="sold" aria-pressed="false">Sold</button></div></div>
+    <div class="range"><label class="note" for="budget">Budget</label>
+      <input type="range" id="budget" min="85" max="200" step="5" value="200">
+      <output id="budgetOut" for="budget">Any budget</output></div>
+    <div class="match"><span id="matchCount">184 flats match</span><button class="link" id="resetFilters">Reset</button></div>
+    <form class="goflat" id="goFlat"><input id="goFlatIn" type="text" placeholder="Flat number, e.g. B-1203" aria-label="Go to a flat by number" autocomplete="off"><button type="submit">Go</button></form>
+  </aside>
+  </div>
+
+  <aside class="panel glass" id="panel" aria-live="polite">
+    <div class="panel-head">
+      <div><div class="t" id="pTitle">Project overview</div><div class="s" id="pSub">Tap any flat on a tower</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="icon-btn" id="pMin" aria-label="Collapse or expand details" hidden>&#8211;</button>
+        <button class="icon-btn" id="pClose" aria-label="Close flat details" hidden>&#215;</button>
+      </div>
+    </div>
+    <div class="panel-body" id="pBody"></div>
+  </aside>
+
+  <nav class="dock glass" id="dock" aria-label="View controls">
+    <div class="row">
+      <span class="lab ext-only">Show</span>
+      <button class="seg ext-only" data-mode="real" aria-pressed="true">Real view</button>
+      <button class="seg ext-only" data-mode="avail" aria-pressed="false">Availability</button>
+      <button class="seg ext-only" id="labelsBtn" aria-pressed="true">Labels</button>
+      <button class="seg ext-only" id="leadsBtn">Enquiries</button>
+      <button class="seg" id="qualBtn" aria-pressed="true" title="Switch to Fast if the view feels slow">Quality: High</button>
+      <span class="sep ext-only"></span>
+      <span class="lab">Light</span>
+      <button class="seg" data-time="6.7" aria-pressed="false">Sunrise</button>
+      <button class="seg" data-time="8.6" aria-pressed="false">Day</button>
+      <button class="seg" data-time="12" aria-pressed="false">Noon</button>
+      <button class="seg" data-time="17.4" aria-pressed="true">Sunset</button>
+      <button class="seg" data-time="20.5" aria-pressed="false">Night</button>
+    </div>
+    <div class="row ext-only">
+      <span class="lab">Go to</span>
+      <button class="seg" data-view="all">Whole project</button>
+      <button class="seg" data-view="A">Tower A</button>
+      <button class="seg" data-view="B">Tower B</button>
+      <button class="seg" data-view="C">Tower C</button>
+      <button class="seg" data-view="top">Top view</button>
+      <button class="seg" id="tourBtn" aria-pressed="false">Take the tour</button>
+    </div>
+    <div class="row ext-only">
+      <span class="lab">Nearby</span>
+      <button class="seg" data-poi="pool">Pool</button>
+      <button class="seg" data-poi="club">Club house</button>
+      <button class="seg" data-poi="garden">Garden</button>
+      <button class="seg" data-poi="play">Kids play</button>
+      <button class="seg" data-poi="park">City park</button>
+      <button class="seg" data-poi="mall">Mall</button>
+      <button class="seg" data-poi="school">School</button>
+      <button class="seg" data-poi="hospital">Hospital</button>
+      <button class="seg" data-poi="metro">Metro</button>
+      <button class="seg" data-poi="locality">Locality</button>
+    </div>
+  </nav>
+
+  <div class="ibar glass" id="ibar" hidden>
+    <div class="row"><button class="seg back" id="iBack">&#8592; Back to towers</button><span class="sep"></span><span class="ititle" id="iTitle"></span></div>
+    <div class="row" id="iModes"><button class="seg" data-imode="doll" aria-pressed="true">Dollhouse</button><button class="seg" data-imode="plan" aria-pressed="false">Floor plan</button><button class="seg" data-imode="walk" aria-pressed="false">Walk inside</button><span class="sep"></span><button class="seg" id="iFurn" aria-pressed="true">Furnished</button><button class="seg" id="iStyle">Style: Warm</button><span class="sep"></span><button class="seg" id="iTour" aria-pressed="false">&#9654; Guided tour</button></div>
+    <div class="row" id="iRooms"></div>
+  </div>
+
+  <button class="ui-toggle glass" id="uiToggle" aria-pressed="false" title="Hide or show the panels (H)"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg><span>Hide panels</span></button>
+  <div class="intro-cap" id="introCap" hidden><b>Skyline Residences</b><span>3 towers &nbsp;&middot;&nbsp; 184 residences &nbsp;&middot;&nbsp; club house, pool and central garden</span><i>Tap anywhere to skip</i></div>
+  <div class="cap glass" id="cap" hidden><b id="capT"></b><span id="capS"></span></div>
+  <div class="mini glass" id="mini" hidden><canvas id="miniC" width="240" height="160" aria-label="Floor plan. Tap a room to walk there."></canvas><p>Tap the plan or the floor to walk. Drag to look. Arrow keys also work.</p></div>
+
+  <div class="hint">Drag to rotate. Scroll or pinch to zoom. Tap a flat for price and details.</div>
+  <div class="tip glass" id="tip" hidden></div>
+  <div class="toast glass" id="toast" role="status" hidden></div>
+  <div id="boot"><div><h2>Skyline Residences</h2><p>Preparing the 3D experience</p><i></i></div></div>
+  <div id="nogl" hidden><p>This device could not start the 3D view. Open the page in Chrome, Safari or Edge with hardware acceleration turned on.</p></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/towers.js"></script>
+<script src="js/site.js"></script>
+<script src="js/locality.js"></script>
+<script src="js/interior.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
