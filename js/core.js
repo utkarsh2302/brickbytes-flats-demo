@@ -64,15 +64,15 @@ var M = BB.M = {
   land: S({ map: noiseTex(512, '#6c7257', 9000, 0.12, [320, 320], 17), roughness: 1 }),
   paving: S({ map: ctex(paverC(), [1, 1]), roughness: 0.9 }),
   sand: S({ map: noiseTex(256, '#d8cbb2', 2500, 0.07, [0.3, 0.3], 23), roughness: 0.9 }),
-  water: S({ color: 0x2aa7c8, roughness: 0.05, metalness: 0.2, envMapIntensity: 1.5, emissive: 0x1090b8, emissiveIntensity: 0 }),
+  water: S({ color: 0x1593b4, roughness: 0.14, metalness: 0.2, envMapIntensity: 0.5, emissive: 0x1090b8, emissiveIntensity: 0 }),
   trunk: S({ color: 0x64503f, roughness: 1 }),
   leaf: S({ vertexColors: true, roughness: 0.95 }),
   lamp: S({ color: 0xfff1d0, emissive: 0xffd9a0, emissiveIntensity: 0 }),
   cream: S({ color: 0xf2ead8, roughness: 0.9, side: THREE.DoubleSide }),
   tyre: S({ color: 0x1b1d1f, roughness: 0.9 }),
   solar: S({ color: 0x1b2a4a, roughness: 0.2, metalness: 0.8, envMapIntensity: 1 }),
-  hill: new THREE.MeshBasicMaterial({ color: 0x6f7c84, side: THREE.DoubleSide, fog: false }),
-  hill2: new THREE.MeshBasicMaterial({ color: 0x5f6f66, side: THREE.DoubleSide, fog: false })
+  hill: new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, fog: false, vertexColors: true }),
+  hill2: new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, fog: false, vertexColors: true })
 };
 (function () { var wn = loader.load('tex/water.jpg'); wn.wrapS = wn.wrapT = THREE.RepeatWrapping; wn.repeat.set(0.09, 0.09); M.water.normalMap = wn; M.water.normalScale.set(0.55, 0.55); BB.waterN = wn; })();
 BB.timeHooks.push(function (t) { M.lamp.emissiveIntensity = t.night * 3; M.water.emissiveIntensity = t.night * 0.5; });
@@ -207,14 +207,15 @@ BB.shrubGeo = blob(0, 0.55, 0, 0.8, 0.75, 3, [0.19, 0.32, 0.16], 0.55, 2);
 /* ---------- sky dome with sun, haze and drifting clouds; stars, moon; time of day ---------- */
 var SKY_V = 'varying vec3 vDir; void main(){ vDir = normalize(position); vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_Position.z = gl_Position.w; }';
 var SKY_F = [
-  'uniform vec3 top; uniform vec3 hor; uniform vec3 gnd; uniform vec3 sunDir; uniform vec3 sunCol; uniform vec3 cloudLit; uniform vec3 cloudSh; uniform float glow; uniform float cover; uniform float time;',
+  'uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform vec3 gnd; uniform vec3 sunDir; uniform vec3 sunCol; uniform vec3 cloudLit; uniform vec3 cloudSh; uniform float glow; uniform float cover; uniform float time;',
   'varying vec3 vDir;',
   'float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
   'float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }',
   'float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * noise(p); p = p * 2.03 + vec2(17.0, 9.0); a *= 0.5; } return s; }',
   'void main(){',
   '  vec3 d = normalize(vDir); float h = d.y;',
-  '  vec3 col = mix(hor, top, pow(clamp(h, 0.0, 1.0), 0.48));',
+  '  float hh = clamp(h, 0.0, 1.0);',
+  '  vec3 col = mix(hor, mid, smoothstep(0.0, 0.2, hh)); col = mix(col, top, smoothstep(0.1, 0.72, hh));',
   '  col = mix(col, gnd, smoothstep(0.0, -0.12, h));',
   '  float sd = max(dot(d, normalize(sunDir)), 0.0);',
   '  float az = max(dot(normalize(d.xz + 1e-4), normalize(sunDir.xz + 1e-4)), 0.0);',
@@ -223,7 +224,7 @@ var SKY_F = [
   '  if (h > 0.0) {',
   '    vec2 uv = d.xz / (h + 0.16) * 0.55 + vec2(time * 0.006, time * 0.002);',
   '    float n = fbm(uv * 2.3), n2 = fbm(uv * 6.1 + 11.0);',
-  '    float c = smoothstep(0.56, 0.9, n + n2 * 0.2) * smoothstep(0.02, 0.22, h) * cover;',
+  '    float c = smoothstep(0.52, 0.88, n + n2 * 0.2) * smoothstep(0.015, 0.12, h) * cover;',
   '    float wisp = smoothstep(0.55, 0.9, fbm(vec2(uv.x * 0.7, uv.y * 2.6) + 40.0)) * 0.35 * smoothstep(0.1, 0.5, h) * cover;',
   '    float lit = 0.45 + 0.55 * smoothstep(0.3, 0.8, n2 + (n - 0.6) * 0.8);',
   '    col = mix(col, mix(cloudSh, cloudLit, lit), clamp(c * 0.92 + wisp, 0.0, 1.0));',
@@ -233,7 +234,7 @@ var SKY_F = [
   '  #include <encodings_fragment>',
   '  gl_FragColor.rgb += (hash(gl_FragCoord.xy + time) - 0.5) / 160.0;',
   '}'].join('\n');
-var skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, gnd: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() }, cloudLit: { value: new THREE.Color() }, cloudSh: { value: new THREE.Color() }, glow: { value: 0 }, cover: { value: 1 }, time: { value: 0 } };
+var skyU = { top: { value: new THREE.Color() }, mid: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, gnd: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() }, cloudLit: { value: new THREE.Color() }, cloudSh: { value: new THREE.Color() }, glow: { value: 0 }, cover: { value: 1 }, time: { value: 0 } };
 var skyMat = new THREE.ShaderMaterial({ uniforms: skyU, vertexShader: SKY_V, fragmentShader: SKY_F, side: THREE.BackSide, depthWrite: false, fog: false });
 var dome = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), skyMat); dome.scale.setScalar(9000); dome.renderOrder = -10; dome.frustumCulled = false; scene.add(dome);
 var envScene = new THREE.Scene(), envDome = new THREE.Mesh(dome.geometry, skyMat); envDome.scale.setScalar(900); envScene.add(envDome);
@@ -249,28 +250,31 @@ function sstep(a, b, x) { var t = Math.min(1, Math.max(0, (x - a) / (b - a))); r
 function mix3(out, n, g, d, day, high) { return out.setRGB(n[0], n[1], n[2]).lerp(cB.setRGB(g[0] + (d[0] - g[0]) * high, g[1] + (d[1] - g[1]) * high, g[2] + (d[2] - g[2]) * high), day); }
 var cA = new THREE.Color(), cB = new THREE.Color(), sunDir = new THREE.Vector3();
 var PALS = { // [night, golden hour, full day], linear values before tone mapping
-  top: [[0.004, 0.007, 0.022], [0.2, 0.3, 0.62], [0.13, 0.38, 1.25]],
-  hor: [[0.02, 0.03, 0.075], [1.9, 0.86, 0.4], [1.3, 1.4, 1.52]],
+  top: [[0.004, 0.007, 0.022], [0.1, 0.2, 0.62], [0.13, 0.38, 1.25]],
+  mid: [[0.008, 0.013, 0.04], [0.8, 0.55, 0.66], [0.36, 0.62, 1.3]],
+  hor: [[0.02, 0.03, 0.075], [1.9, 0.86, 0.4], [0.86, 1.06, 1.4]],
   gnd: [[0.012, 0.016, 0.03], [0.5, 0.36, 0.3], [0.5, 0.6, 0.7]],
   sun: [[0, 0, 0], [3.4, 1.5, 0.6], [3.2, 3.0, 2.6]],
-  cl:  [[0.03, 0.04, 0.075], [2.6, 1.3, 0.8], [3.0, 3.0, 3.0]],
-  cs:  [[0.012, 0.016, 0.035], [0.7, 0.45, 0.55], [1.5, 1.62, 1.85]]
+  cl:  [[0.03, 0.04, 0.075], [2.0, 1.1, 0.8], [3.0, 3.0, 3.0]],
+  cs:  [[0.012, 0.016, 0.035], [0.42, 0.3, 0.46], [1.5, 1.62, 1.85]]
 };
 BB.time = { hour: 11, night: 0, day: 1, exp: 0.6, high: 1 };
+BB.hillGeos = [];
+BB.hillTint = function (k, top, base) { var g = BB.hillGeos[k]; if (!g) return; var p = g.attributes.position, c = g.attributes.color; for (var q = 0; q < p.count; q++) { var t = p.getY(q) > 0 ? top : base; c.setXYZ(q, t.r, t.g, t.b); } c.needsUpdate = true; };
 BB.setHour = function (h) {
   var d = (h - 6) / 12, elev = Math.max(-24, 64 * Math.sin(Math.PI * d)), er = elev * Math.PI / 180, az = Math.PI * d;
   sunDir.set(Math.cos(er) * Math.cos(az), Math.sin(er), Math.cos(er) * (0.4 + 0.6 * Math.sin(Math.max(0, Math.min(Math.PI, az))))).normalize();
   var day = sstep(-3, 9, elev), night = 1 - sstep(-9, 3, elev), high = sstep(3, 34, elev), gold = day * (1 - high);
-  mix3(skyU.top.value, PALS.top[0], PALS.top[1], PALS.top[2], day, high); mix3(skyU.hor.value, PALS.hor[0], PALS.hor[1], PALS.hor[2], day, high); mix3(skyU.gnd.value, PALS.gnd[0], PALS.gnd[1], PALS.gnd[2], day, high);
+  mix3(skyU.top.value, PALS.top[0], PALS.top[1], PALS.top[2], day, high); mix3(skyU.mid.value, PALS.mid[0], PALS.mid[1], PALS.mid[2], day, high); mix3(skyU.hor.value, PALS.hor[0], PALS.hor[1], PALS.hor[2], day, high); mix3(skyU.gnd.value, PALS.gnd[0], PALS.gnd[1], PALS.gnd[2], day, high);
   mix3(skyU.sunCol.value, PALS.sun[0], PALS.sun[1], PALS.sun[2], day, high); mix3(skyU.cloudLit.value, PALS.cl[0], PALS.cl[1], PALS.cl[2], day, high); mix3(skyU.cloudSh.value, PALS.cs[0], PALS.cs[1], PALS.cs[2], day, high);
-  skyU.sunDir.value.copy(sunDir); skyU.glow.value = 0.25 + gold * 0.75; skyU.cover.value = 0.85;
+  skyU.sunDir.value.copy(sunDir); skyU.glow.value = 0.25 + gold * 0.75; skyU.cover.value = 0.8;
   if (day > 0.02) { sun.position.copy(sunDir).multiplyScalar(620); sun.color.copy(cA.set(0xff8f4a).lerp(cB.set(0xfff3e0), high)); sun.intensity = 2.3 * day * (0.5 + 0.5 * high); }
   else { sun.position.set(-200, 460, -300); sun.color.set(0x8ea6ff); sun.intensity = 0.4; }
   fill.position.set(-sunDir.x * 300, 220, -sunDir.z * 300); fill.color.copy(cA.set(0x5f78c0).lerp(cB.set(0xbfd6ff), day)); fill.intensity = 0.1 + 0.2 * day + gold * 0.1;
   hemi.color.copy(cA.set(0x27355e).lerp(cB.set(0xcfe0ff), day)); hemi.groundColor.copy(cA.set(0x0d1018).lerp(cB.set(0x7a7263), day)); hemi.intensity = 0.4 + 0.3 * day;
   scene.fog.color.copy(skyU.hor.value).lerp(skyU.top.value, 0.08).multiplyScalar(0.82);
   stars.material.opacity = night * 0.9; moon.material.opacity = night * 0.9;
-  M.hill.color.copy(skyU.hor.value).lerp(skyU.top.value, 0.4).multiplyScalar(0.62); M.hill2.color.copy(skyU.hor.value).lerp(skyU.top.value, 0.5).multiplyScalar(0.44).lerp(cA.setRGB(0.1, 0.16, 0.1), 0.2 * day);
+  cA.copy(skyU.hor.value).lerp(skyU.top.value, 0.4).multiplyScalar(0.62); BB.hillTint(0, cA, scene.fog.color); cA.copy(skyU.hor.value).lerp(skyU.top.value, 0.5).multiplyScalar(0.44).lerp(cB.setRGB(0.1, 0.16, 0.1), 0.2 * day); BB.hillTint(1, cA, scene.fog.color);
   BB.time = { hour: h, night: night, day: day, exp: 0.5 + night * 0.55 - gold * 0.02, elev: elev, high: high, gold: gold };
   var rt = pmrem.fromScene(envScene, 0.02); if (envRT) envRT.dispose(); envRT = rt; scene.environment = rt.texture;
   BB.timeHooks.forEach(function (f) { f(BB.time); });

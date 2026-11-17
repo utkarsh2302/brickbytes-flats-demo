@@ -8,7 +8,7 @@ var ctl = IN.ctl = new THREE.OrbitControls(IN.cam, canvas); ctl.enabled = false;
 var hemi = new THREE.HemisphereLight(0xffffff, 0x8a7f72, 0.6), sun = new THREE.DirectionalLight(0xffffff, 1);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; sun.shadow.radius = 3;
 IN.scene.add(hemi); IN.scene.add(sun); IN.scene.add(sun.target);
-(function () { var c = cnv(8, 256), g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#1b2624'); gr.addColorStop(1, '#0a100f'); g.fillStyle = gr; g.fillRect(0, 0, 8, 256); IN.studio = ctex(c); })();
+(function () { var c = cnv(512, 512), g = c.getContext('2d'), gr = g.createRadialGradient(256, 236, 20, 256, 256, 380); gr.addColorStop(0, '#3a4644'); gr.addColorStop(0.55, '#1d2625'); gr.addColorStop(1, '#0b0f0f'); g.fillStyle = gr; g.fillRect(0, 0, 512, 512); IN.studio = ctex(c); })();
 
 /* ---------- textures ---------- */
 function rep(t, x, y) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(x, y); return t; }
@@ -339,7 +339,7 @@ IN.miniMap = function (cv) { // returns the transform used, so a tap on the plan
   return { s: s, ox: ox, oz: oz, w: w, mirror: IN.mirror };
 };
 IN.setMode = function (m, room) {
-  IN.mode = m; BB.stopTween(); IN.stopTour(); var p = IN.plan, g = IN.g, cx = p.W / 2, cz = (p.D + 1.7) / 2, dist = Math.max(p.W * 1.5, 18) * BB.fit();
+  IN.mode = m; BB.stopTween(); IN.stopTour(); var p = IN.plan, g = IN.g, cx = p.W / 2, cz = (p.D + 1.7) / 2, dist = Math.max(p.W * 1.22, 16) * BB.fit();
   g.walls.scale.y = m === 'walk' ? 2.86 : 1.5; g.walk.visible = m === 'walk'; g.labels.visible = m !== 'walk' && BB.state.labels;
   if (m === 'walk') {
     IN.cam.fov = 62; ctl.enabled = false; IN.cam.rotation.order = 'YXZ'; sun.position.set(mx(p.W / 2 - 7), 9.5, p.D + 16);

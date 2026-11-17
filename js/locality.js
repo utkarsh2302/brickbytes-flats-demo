@@ -51,13 +51,13 @@ function bays(seed, style) {
     else { g.fillStyle = '#eeebe3'; g.fillRect(wx - 4, wy + wh, ww + 8, 4); if (rr() < 0.22) { g.fillStyle = '#c9ccc9'; g.fillRect(wx + ww + 6, wy + wh - 16, 18, 14); } }
     if (rr() < 0.36) { var lg = eg.createLinearGradient(0, wy, 0, wy + wh); lg.addColorStop(0, rr() > 0.4 ? '#ffd9a2' : '#fff0d8'); lg.addColorStop(1, '#b97a3a'); eg.fillStyle = lg; eg.fillRect(wx + 3, wy + 3, ww - 6, wh - 6); eg.fillStyle = '#000'; eg.fillRect(wx + ww / 2 - 1.5, wy, 3, wh); }
   }
-  BB.speckle(g, 1024, 1024, 9000, 0.035, rr); g.fillStyle = 'rgba(236,234,228,.5)'; g.fillRect(0, 0, 1024, 1024);
+  BB.speckle(g, 1024, 1024, 9000, 0.035, rr); g.fillStyle = 'rgba(236,234,228,.36)'; g.fillRect(0, 0, 1024, 1024);
   var m = ctex(c, [1, 1]), em = ctex(e, [1, 1]); return S({ map: m, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, roughness: 0.88, envMapIntensity: 0.3 });
 }
 var cityMats = [bays(40, 0), bays(41, 1)];
-BB.timeHooks.push(function (t) { cityMats.forEach(function (m) { m.emissiveIntensity = t.night * 0.7; }); });
+BB.timeHooks.push(function (t) { cityMats.forEach(function (m) { m.emissiveIntensity = t.night * 0.85 + (t.gold || 0) * 0.3; }); });
 var PAL = [[0.6, 0.54, 0.43], [0.64, 0.62, 0.57], [0.62, 0.46, 0.33], [0.6, 0.39, 0.32], [0.45, 0.52, 0.56], [0.58, 0.47, 0.27], [0.5, 0.5, 0.48], [0.54, 0.31, 0.22], [0.52, 0.56, 0.45], [0.66, 0.58, 0.44], [0.7, 0.66, 0.6]];
-PAL = PAL.map(function (c) { return [c[0] * 0.3 + 0.47, c[1] * 0.3 + 0.46, c[2] * 0.3 + 0.44]; });   // the surroundings are kept muted so the project stands out
+PAL = PAL.map(function (c) { return [c[0] * 0.4 + 0.41, c[1] * 0.4 + 0.4, c[2] * 0.4 + 0.385]; });   // the surroundings are kept muted so the project stands out
 var L = { near: [[], []], far: [[], []], white: [], tank: [], dark: [] };
 function building(x, z, w, d, floors, colIx, style) {
   var h = floors * 3.2 + 0.5, g = new THREE.BoxGeometry(w, h, d).toNonIndexed(), uv = g.attributes.uv, n = g.attributes.position.count, col = new Float32Array(n * 3), c = PAL[colIx % PAL.length], uo = Math.floor(r() * 8) / 8, vo = Math.floor(r() * 8) / 8, rf = [[0.5, 0.49, 0.47], [0.53, 0.48, 0.45], [0.47, 0.48, 0.49], [0.55, 0.54, 0.51]][Math.floor(r() * 4)];
@@ -134,8 +134,8 @@ XS.forEach(function (x) { if (Math.abs(x) < 800) along(true, x, wX(x)); }); ZS.f
   var px0 = -144, px1 = 144, pz0 = 135.5, pz1 = 241;
   var lawn = new THREE.Mesh(new THREE.PlaneGeometry(px1 - px0 - 4, pz1 - pz0 - 4), S({ map: BB.photo('tex/grass.jpg', [46, 17]), color: 0x8d9872, roughness: 1 })); lawn.rotation.x = -Math.PI / 2; lawn.position.set(0, 0.215, (pz0 + pz1) / 2); lawn.receiveShadow = true; scene.add(lawn);
   var lk = [[-34, -14], [-10, -20], [16, -16], [36, -6], [38, 8], [20, 18], [-2, 14], [-22, 20], [-38, 10], [-42, -2]];
-  var w2 = S({ color: 0x2f8fae, roughness: 0.05, metalness: 0.25, envMapIntensity: 1.5, side: THREE.DoubleSide, normalMap: BB.waterN, normalScale: new THREE.Vector2(0.4, 0.4) });
-  BB.flatShape(lk, S({ color: 0xcdbf9f, roughness: 0.95, side: THREE.DoubleSide }), -34, 0.23, 188, 1.12); BB.flatShape(lk, w2, -34, 0.25, 188, 1.0);
+  var w2 = S({ color: 0x2c7f96, roughness: 0.16, metalness: 0.25, envMapIntensity: 0.55, side: THREE.DoubleSide, normalMap: BB.waterN, normalScale: new THREE.Vector2(0.8, 0.8) });
+  BB.flatShape(lk, S({ color: 0xcdbf9f, roughness: 0.95, side: THREE.DoubleSide }), -34, 0.34, 188, 1.12); BB.flatShape(lk, w2, -34, 0.56, 188, 1.0);
   var pm = S({ map: ctex(BB.paverC(), [1, 1]), roughness: 0.9, side: THREE.DoubleSide });
   BB.ribbon([[-138, 140], [-100, 150], [-84, 176], [-92, 210], [-60, 232], [-10, 226], [30, 232], [80, 226], [120, 236], [138, 222]], 3, 0.24, pm);
   BB.ribbon([[0, 137], [6, 160], [30, 176], [70, 180], [110, 170], [138, 176]], 2.6, 0.24, pm);
@@ -227,11 +227,12 @@ BB.tick.push(function (t) {
   cars.instanceMatrix.needsUpdate = true;
 });
 
-/* ---------- distant hills ---------- */
+/* ---------- distant hills, fading into haze toward their base ---------- */
+function hazeBase(g, k) { var p = g.attributes.position, c = []; for (var q = 0; q < p.count; q++) { var v = p.getY(q) > 0 ? 1 : k; c.push(v, v, v); } g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); }
 var hg = new THREE.CylinderGeometry(3000, 3000, 1, 160, 1, true), hp = hg.attributes.position;
 for (i = 0; i < hp.count; i++) { var ang = Math.atan2(hp.getZ(i), hp.getX(i)); hp.setY(i, hp.getY(i) > 0 ? 70 + 90 * Math.abs(Math.sin(ang * 3.1 + 1)) + 46 * Math.sin(ang * 9.7) + 22 * Math.sin(ang * 23) : -10); }
-hg.computeVertexNormals(); scene.add(new THREE.Mesh(hg, M.hill));
+hg.computeVertexNormals(); hazeBase(hg, 1.55); BB.hillGeos[0] = hg; scene.add(new THREE.Mesh(hg, M.hill));
 var hg2 = new THREE.CylinderGeometry(2300, 2300, 1, 120, 1, true), hp2 = hg2.attributes.position;
 for (i = 0; i < hp2.count; i++) { var a2 = Math.atan2(hp2.getZ(i), hp2.getX(i)); hp2.setY(i, hp2.getY(i) > 0 ? 24 + 46 * Math.abs(Math.sin(a2 * 4.3 + 2)) + 18 * Math.sin(a2 * 13) : -10); }
-hg2.computeVertexNormals(); scene.add(new THREE.Mesh(hg2, M.hill2));
+hg2.computeVertexNormals(); hazeBase(hg2, 2.1); BB.hillGeos[1] = hg2; scene.add(new THREE.Mesh(hg2, M.hill2));
 })();

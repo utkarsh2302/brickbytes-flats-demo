@@ -126,7 +126,7 @@ function renderPanel() {
     '<div class="actions"><button class="btn" id="holdBtn"' + (f.status !== 'available' && !f.heldHere ? ' disabled' : '') + '>' + (f.status === 'available' ? 'Hold for 24 hours' : f.heldHere ? 'Release hold' : f.status === 'hold' ? 'Already on hold' : 'Sold') + '</button><button class="btn" id="visitBtn">Book a site visit</button></div>' +
     (state.form ? '<form class="form" id="visitForm"><label>Full name<input id="vName" required autocomplete="name"></label><label>Mobile number<input id="vPhone" required inputmode="tel" autocomplete="tel" pattern="[0-9+ ]{8,15}"></label><div class="two"><label>Date<input id="vDate" type="date" required></label><label>Time<select id="vSlot"><option>10:00 am</option><option>12:00 noon</option><option>3:00 pm</option><option>5:00 pm</option></select></label></div><div class="actions"><button class="btn primary" type="submit">Confirm visit</button><button class="btn" type="button" id="visitCancel">Cancel</button></div><p class="note">Demo: saved in this browser only. Nothing is sent anywhere.</p></form>' : '') +
     '<div class="actions"><button class="btn" id="shortBtn" aria-pressed="' + sh + '">' + (sh ? '★ Shortlisted' : '☆ Add to shortlist') + '</button>' +
-    '<a class="btn" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent('Flat ' + f.id + ', ' + f.type + ', ' + num(f.sup) + ' sq ft, ' + money(f.price) + ', floor ' + f.floor + ', ' + $('#projName').textContent.trim()) + '">Share on WhatsApp</a></div>' +
+    '<a class="btn" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent('Flat ' + f.id + ', ' + f.type + ', ' + num(f.sup) + ' sq ft, ' + money(f.price) + ', floor ' + f.floor + ', ' + $('#projName').textContent.trim() + '. See it in 3D: ' + location.origin + location.pathname + '?flat=' + f.id) + '">Share on WhatsApp</a></div>' +
     '<p class="note">Holds and site visits are saved in this browser for the demo. Nothing is sent anywhere.</p>';
 }
 
@@ -279,7 +279,7 @@ $('#resetFilters').addEventListener('click', function () {
 $('#filterToggle').addEventListener('click', function () { var o = $('#filters').classList.toggle('open'); this.setAttribute('aria-expanded', String(o)); this.textContent = o ? 'Close' : 'Filters'; });
 var pendingHour = null, hiQ = true;
 function setQuality(hi) { // Fast: lower pixel density and a smaller shadow map, for laptops without a strong graphics chip
-  hiQ = hi; renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, hi ? 2 : 1.5));
+  hiQ = hi; BB.fx.enable(hi); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, hi ? 2 : 1.5));
   var sz = hi ? (window.innerWidth < 820 ? 2048 : 4096) : 2048; BB.sun.shadow.mapSize.set(sz, sz); if (BB.sun.shadow.map) { BB.sun.shadow.map.dispose(); BB.sun.shadow.map = null; }
   var b = $('#qualBtn'); b.setAttribute('aria-pressed', String(hi)); b.textContent = hi ? 'Quality: High' : 'Quality: Fast'; resize();
 }
@@ -358,11 +358,11 @@ nameEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.pre
 /* ---------- resize and render loop ---------- */
 function resize() {
   var w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
-  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); IN.cam.aspect = w / h; IN.cam.updateProjectionMatrix();
+  renderer.setSize(w, h, false); BB.fx.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); IN.cam.aspect = w / h; IN.cam.updateProjectionMatrix();
   document.documentElement.style.setProperty('--dock-h', $('#dock').offsetHeight + 'px');
 }
 window.addEventListener('resize', resize);
-var fpsN = 0, fpsT0 = performance.now() + 14000;
+var fpsN = 0, fpsT0 = performance.now() + 14000, FXO = { bloom: 0.3, threshold: 0.82, radius: 0.75, vig: 0.3 }, FXI = { bloom: 0.1, threshold: 0.93, radius: 0.5, vig: 0.22 };
 function ease(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
 BB.onTime = function () { IN.lights(); };
 function loop(now) {
@@ -388,19 +388,18 @@ function loop(now) {
     } else IN.ctl.update();
     if (IN.mode === 'walk' && state.sel) {
       var tg = towerInfo[state.sel.tower].group; IN.syncBackdrop(state.sel);
-      tg.visible = false; BB.labels.visible = false; renderer.render(scene, IN.bgCam); tg.visible = true; BB.labels.visible = state.labels;
-      renderer.autoClear = false; renderer.clearDepth(); IN.scene.background = null; renderer.render(IN.scene, IN.cam); renderer.autoClear = true;
-    } else { IN.scene.background = IN.studio; renderer.render(IN.scene, IN.cam); }
+      tg.visible = false; BB.labels.visible = false; IN.scene.background = null; BB.fx.render(scene, IN.bgCam, IN.scene, IN.cam, FXI); tg.visible = true; BB.labels.visible = state.labels;
+    } else { IN.scene.background = IN.studio; BB.fx.render(IN.scene, IN.cam, null, null, FXI); }
   } else {
     controls.update();
-    var fd = camera.position.distanceTo(controls.target), fn = Math.min(1700, Math.max(260, fd * 1.15 + 40)); scene.fog.near += (fn - scene.fog.near) * 0.08; scene.fog.far = scene.fog.near + 1500;   // haze begins just beyond what you are looking at
-    renderer.render(scene, camera);
+    var fd = camera.position.distanceTo(controls.target), fn = Math.min(1700, Math.max(240, fd + 60)); scene.fog.near += (fn - scene.fog.near) * 0.08; scene.fog.far = scene.fog.near + 1640;   // haze begins just beyond what you are looking at
+    FXO.bloom = 0.06 + 0.5 * BB.time.night + 0.26 * (BB.time.gold || 0); FXO.threshold = 0.8 + 0.16 * (BB.time.high || 0) * BB.time.day; BB.fx.render(scene, camera, null, null, FXO);
   }
 }
 resize(); BB.setHour(17.4); view('all', 0);
-var intro = false;
+var intro = false, deepFlat = byId[((/[?&]flat=([^&]+)/.exec(location.search) || [])[1] || '').toUpperCase()];   // a shared link opens straight at that flat
 function endIntro() { if (!intro) return; intro = false; document.body.classList.remove('clean', 'intro'); $('#introCap').hidden = true; var b = $('#uiToggle'); b.setAttribute('aria-pressed', 'false'); b.querySelector('span').textContent = 'Hide panels'; }
-if (!reduceMotion && (!BB.lite || /intro/.test(location.search))) { // opening flythrough: over the locality, across the park, around the towers, then home
+if (!reduceMotion && !deepFlat && (!BB.lite || /intro/.test(location.search))) { // opening flythrough: over the locality, across the park, around the towers, then home
   var k0 = fit(), home = camera.position.clone(), homeT = controls.target.clone(), V = function (x, y, z) { return new THREE.Vector3(x, y, z); };
   var shots = [[V(-420 * k0, 150 * k0, 620 * k0), V(0, 30, 60), 0], [V(-150 * k0, 70 * k0, 330 * k0), V(0, 26, 40), 4200], [V(150 * k0, 44 * k0, 190 * k0), V(0, 34, -10), 4600], [home, homeT, 3600]], si = 0;
   intro = true; document.body.classList.add('clean', 'intro'); $('#introCap').hidden = false;
@@ -408,7 +407,7 @@ if (!reduceMotion && (!BB.lite || /intro/.test(location.search))) { // opening f
   camera.position.copy(shots[0][0]); controls.target.copy(shots[0][1]); BB.startIntro = step;
   canvas.addEventListener('pointerdown', endIntro); window.addEventListener('keydown', endIntro);
 }
-controls.update(); budgetLabel(); refresh();
+controls.update(); budgetLabel(); refresh(); if (deepFlat) select(deepFlat, true);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
 requestAnimationFrame(loop);
 requestAnimationFrame(function () { requestAnimationFrame(function () { if (BB.startIntro) BB.startIntro(); $('#boot').classList.add('done'); setTimeout(function () { $('#boot').hidden = true; }, 900); }); });
