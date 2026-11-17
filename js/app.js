@@ -362,7 +362,7 @@ function resize() {
   document.documentElement.style.setProperty('--dock-h', $('#dock').offsetHeight + 'px');
 }
 window.addEventListener('resize', resize);
-var idleT = performance.now() + 20000, fpsN = 0, fpsT0 = performance.now() + 14000, FXO = { bloom: 0.3, threshold: 0.82, radius: 0.75, vig: 0.3 }, FXI = { bloom: 0.1, threshold: 0.93, radius: 0.5, vig: 0.22 };
+var idleT = performance.now() + 20000, fpsSum = 0, fpsN = 0, fpsT0 = performance.now() + 14000, FXO = { bloom: 0.3, threshold: 0.82, radius: 0.75, vig: 0.3 }, FXI = { bloom: 0.1, threshold: 0.93, radius: 0.5, vig: 0.22 };
 ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(function (ev) { window.addEventListener(ev, function () { idleT = performance.now(); }, { passive: true, capture: true }); });
 function ease(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
 BB.onTime = function () { IN.lights(); };
@@ -379,8 +379,9 @@ function loop(now) {
   if (BB.waterN) { BB.waterN.offset.x += 0.0005; BB.waterN.offset.y += 0.0003; }
   for (var ti = 0; ti < BB.tick.length; ti++) BB.tick[ti](now / 1000);
   renderer.toneMappingExposure = IN.on ? Math.min(BB.time.exp, 0.62) : BB.time.exp;
-  var dt = Math.min(0.1, (now - (loop.last || now)) / 1000); loop.last = now;
-  if (fpsN >= 0 && now > fpsT0) { fpsN++; if (now - fpsT0 > 6000) { var fps = fpsN / ((now - fpsT0) / 1000); fpsN = -1; if (fps < 17 && hiQ && !BB.lite) { setQuality(false); toast('Switched to Fast quality for a smoother view. Tap Quality in the bottom bar to go back to High.'); } } }
+  var rawDt = (now - (loop.last || now)) / 1000, dt = Math.min(0.1, rawDt); loop.last = now;
+  if (fpsN >= 0 && now > fpsT0 && rawDt > 0 && rawDt < 0.4) { fpsN++; fpsSum += rawDt;   // slower frames than that mean a hidden or throttled tab, not a slow graphics chip
+    if (fpsSum > 5) { var fps = fpsN / fpsSum; fpsN = -1; if (fps < 17 && hiQ && !BB.lite) { setQuality(false); toast('Switched to Fast quality for a smoother view. Tap Quality in the bottom bar to go back to High.'); } } }
   if (IN.on) {
     if (IN.mode === 'walk') {
       var kf = (keys.arrowup || keys.w ? 1 : 0) - (keys.arrowdown || keys.s ? 1 : 0), ks = (keys.d ? 1 : 0) - (keys.a ? 1 : 0), kt = (keys.arrowleft ? 1 : 0) - (keys.arrowright ? 1 : 0);
